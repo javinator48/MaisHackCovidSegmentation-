@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 import tensorflow as tf
 import cv2
 import numpy as np
-
+import matplotlib.pyplot as plt
 BG_GRAY = "#ABB2B9"
 BG_COLOR = "#17202A"
 TEXT_COLOR = "#EAECEE"
@@ -26,14 +26,22 @@ class Widget():
 
     def runModel(self,filename):
         model = tf.keras.models.load_model('covidModel.h5',  compile=False)
-        img = cv2.imread(filename)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        resized_img = cv2.resize(img, (128,128), interpolation = cv2.INTER_AREA)/255.
-        image = np.expand_dims(resized_img, axis = 0)
-        predicted = model.predict(image)
-        fig = plt.figure(figsize = (18,15))
-        plt.imshow(x_test[i][...,0], cmap = 'bone')
-        plt.imshow(predicted[i][...,0],alpha = 0.5,cmap = "nipy_spectral")
+        img = cv2.imread(filename,cv2.IMREAD_GRAYSCALE)
+        resized_img = cv2.resize(img, (128,128), interpolation = cv2.INTER_AREA).astype('uint8')
+        img_expand = np.expand_dims(resized_img,axis=(0,3))
+
+        predicted = model.predict(img_expand)
+        print("prediction successful")
+        # binarymask= np.where(predicted[0,:,:,0] > 0.5, 1.0,0)
+        # resized_img[binarymask>0] = (255.)
+        # fig = plt.figure(figsize = (10,10))
+        # plt.imshow(x_test[i][...,0], cmap = 'bone')
+        # print(predicted.shape)
+        plt.imshow(resized_img,cmap = "gray")
+        tempImage = predicted[0,:,:,0]
+        # tempImage = cv2.resize(tempImage, (128))
+        plt.imshow(tempImage,alpha=0.5,cmap = "nipy_spectral")
+
         plt.savefig("segmentedImage.jpg")
 
 
@@ -41,7 +49,7 @@ class Widget():
         self.entry.delete(0, END)
         self.add_original_image(msg)
         self._insert_message("I am processing your image", "Doctor")
-        # self.runModel(msg)
+        self.runModel(msg)
         self.add_segmented_image()
 
     def _on_enter_pressed(self, event):
@@ -60,7 +68,7 @@ class Widget():
         if msg.lower() == "goodbye":
             out2 = "Goodbye, it was nice to have you around."
             self._insert_message(out2,"Doctor")
-        if (".jpg" in msg) or (".png" in msg):
+        if (".jpeg" in msg) or (".png" in msg):
             self._insert_message("Got it! Processing...", "Doctor")
             self._insert_message("Here is the image you gave me: ","Doctor")
             self._on_add_pressed(msg)
@@ -137,7 +145,7 @@ class Widget():
     def add_segmented_image(self):
         self.text.configure(state=NORMAL)
         global segmented_image
-        img1 = Image.open("segmentedImage2.jpg")
+        img1 = Image.open("segmentedImage.jpg")
         segmented_image = ImageTk.PhotoImage(img1)
         self.text.image_create(END, image=segmented_image)
         self.text.insert(END, "\n")
